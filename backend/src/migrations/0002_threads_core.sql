@@ -1,10 +1,10 @@
 
-create tabel if not exists categories (
+create table if not exists categories (
     id bigserial primary key,
     slug text not null unique,
     name text not null,
     description text
-)
+);
 
 create table if not exists threads (
     id bigserial primary key,
@@ -14,11 +14,11 @@ create table if not exists threads (
     body text not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
-)
+);
 
 
 create index if not exists idx_threads_category_created_at
-    on threads (category_id, created_at desc)
+    on threads (category_id, created_at desc);
 
 
 
