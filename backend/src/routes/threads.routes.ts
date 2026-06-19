@@ -14,9 +14,9 @@ import { getUserFromClerk } from "../modules/users/user.service.js";
 export const threadsRouters = Router();
 
 const CreatedThreadsSchema = z.object({
-  title: z.string().trim().min(5).max(5),
+  title: z.string().trim().min(5).max(200),
   body: z.string().trim().min(5).max(2000),
-  categorySlug: z.string().trim().min(5),
+  categorySlug: z.string().trim().min(1),
 });
 
 threadsRouters.get("/categories", async (_req, res, next) => {

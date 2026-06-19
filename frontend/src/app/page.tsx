@@ -1,9 +1,9 @@
-import Image from "next/image";
+import ThreadsHomePage from "@/components/threads/threads-home";
 
-export default function Home() {
+export default function ThreadsPages() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <p className="text-white">Homepage</p>
+    <div className="flex w-full flex-1 flex-col">
+      <ThreadsHomePage />
     </div>
   );
 }
