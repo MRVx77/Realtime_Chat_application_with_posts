@@ -36,7 +36,15 @@ function ThreadsHomePage() {
 
         const [extractCategories, extractThreads] = await Promise.all([
           apiGet<category[]>(apiClient, "/api/threads/categories"),
-          apiGet<ThreadSummary[]>(apiClient, "/api/threads/threads"),
+          apiGet<ThreadSummary[]>(apiClient, "/api/threads/threads", {
+            params: {
+              category:
+                activeCategory && activeCategory != "all"
+                  ? activeCategory
+                  : undefined,
+              q: search || undefined,
+            },
+          }),
         ]);
 
         if (!isMounted) return;
