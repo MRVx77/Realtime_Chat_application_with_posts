@@ -3,7 +3,7 @@
 import { apiGet, createBrowserApiClient } from "@/lib/api-client";
 import { category, ThreadSummary } from "@/types/threads";
 import { useAuth } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import Link from "next/link";
@@ -15,12 +15,18 @@ import { Badge } from "../ui/badge";
 function ThreadsHomePage() {
   const { getToken } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const apiClient = useMemo(() => createBrowserApiClient(getToken), [getToken]);
 
   const [categories, setCategories] = useState<category[]>([]);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [activeCategory, setActiveCategory] = useState(
+    searchParams.get("category") ?? "all",
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -55,6 +61,40 @@ function ThreadsHomePage() {
     return <p>{error.message}</p>;
   }
 
+  async function applyFilters(category: string, searchVal: string) {
+    const params = new URLSearchParams();
+
+    if (category && category != "all") {
+      params.set("category", category);
+    }
+
+    if (searchVal.trim()) {
+      params.set("q", searchVal.trim());
+    }
+
+    router.push(`/${params.toString() ? `?${params.toString()}` : ""}`);
+    setIsLoading(true);
+
+    try {
+      const threadAfterSearchAndFilter = await apiGet<ThreadSummary[]>(
+        apiClient,
+        "/api/threads/threads",
+
+        {
+          params: {
+            category: category && category != "all" ? category : undefined,
+            q: searchVal || undefined,
+          },
+        },
+      );
+      setThreads(threadAfterSearchAndFilter);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className=" flex w-full flex-col gap-6 lg:flex-row">
       <aside className="w-full shrink-0 lg:w-72">
@@ -70,7 +110,13 @@ function ThreadsHomePage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button className="flex cursor-pointer w-full items-center px-3 py-3 text-sm font-medium transition-colors text-black hover:bg-card/80 hover:text-foreground">
+            <Button
+              onClick={() => {
+                setActiveCategory("all");
+                applyFilters("all", search);
+              }}
+              className="flex cursor-pointer w-full items-center px-3 py-3 text-sm font-medium transition-colors text-black hover:bg-card/80 hover:text-foreground"
+            >
               All categories
             </Button>
             {isLoading && (
@@ -82,6 +128,10 @@ function ThreadsHomePage() {
             )}
             {categories.map((cat) => (
               <button
+                onClick={() => {
+                  setActiveCategory(cat.slug);
+                  applyFilters(cat.slug, search);
+                }}
                 key={cat.slug}
                 className="flex cursor-pointer w-full items-center px-3 py-3 text-sm font-medium transition-colors text-muted-foreground hover:bg-card/80 hover:text-foreground"
               >
@@ -107,6 +157,13 @@ function ThreadsHomePage() {
                   <Input
                     className="pl-10 bg-secondary/80 text-sm text-foreground  placeholder:text-muted-foreground focus-visible:ring-primary"
                     placeholder="Search your posts....."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.key = "Enter")) {
+                        applyFilters(activeCategory, search);
+                      }
+                    }}
                   />
                 </div>
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
