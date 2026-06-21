@@ -103,7 +103,7 @@ export async function findReplyAuthor(replyId: number) {
 export async function deleteReplyById(replyId: number) {
   await query(
     `
-        delete form replies
+        delete from replies
         where id = $1
         `,
     [replyId],
@@ -145,7 +145,7 @@ export async function getThreadDetailsWithCount(params: {
 }) {
   const { threadId, viewerId } = params;
 
-  const thread = getThreadById(threadId);
+  const thread = await getThreadById(threadId);
 
   const likeResult = await query(
     `
