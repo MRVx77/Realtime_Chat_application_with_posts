@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
   CreatedThread,
-  getThreadById,
   listCategories,
   listThreads,
   parseThreadListFilter,
@@ -10,6 +9,15 @@ import { getAuth } from "../config/clerk.js";
 import { BadRequestError, UnauthorizedError } from "../lib/errors.js";
 import z from "zod";
 import { getUserFromClerk } from "../modules/users/user.service.js";
+import {
+  creatReply,
+  deleteReplyById,
+  findReplyAuthor,
+  getThreadDetailsWithCount,
+  likeThreadOnce,
+  listRepliesForThread,
+  removeThreadOnce,
+} from "../modules/threads/replies.repository.js";
 
 export const threadsRouters = Router();
 
@@ -65,10 +73,13 @@ threadsRouters.get("/threads/:threadId", async (req, res, next) => {
       throw new UnauthorizedError("Unauthorized");
     }
 
-    // const profile = await getUserFromClerk(auth.userId)
-    // const viewerUserId = profile.user.id;
+    const profile = await getUserFromClerk(auth.userId);
+    const viewerId = profile.user.id;
 
-    const thread = await getThreadById(threadId);
+    const thread = await getThreadDetailsWithCount({
+      threadId,
+      viewerId,
+    });
 
     res.json({ data: thread });
   } catch (error) {
@@ -89,6 +100,142 @@ threadsRouters.get("/threads", async (req, res, next) => {
     const extractListofThreads = await listThreads(filter);
 
     res.json({ data: extractListofThreads });
+  } catch (error) {
+    next(error);
+  }
+});
+
+//replies and like end point
+
+threadsRouters.get("/threads/:threadId/replies", async (req, res, next) => {
+  try {
+    const auth = getAuth(req);
+
+    if (!auth.userId) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+    const threadId = Number(req.params.threadId);
+
+    const replies = await listRepliesForThread(threadId);
+
+    res.json({ data: replies });
+  } catch (error) {
+    next(error);
+  }
+});
+
+threadsRouters.post("/threads/:threadId/replies", async (req, res, next) => {
+  try {
+    const auth = getAuth(req);
+
+    if (!auth.userId) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+
+    const threadId = Number(req.params.threadId);
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      throw new BadRequestError("Invalid thread Id");
+    }
+
+    const bodyRaw = typeof req.body?.body === "string" ? req.body.body : "";
+    if (bodyRaw.trim().length <= 2) {
+      throw new BadRequestError("Reply is too short!");
+    }
+
+    const profile = await getUserFromClerk(auth.userId);
+
+    const reply = await creatReply({
+      threadId,
+      authorUserId: profile.user.id,
+      body: bodyRaw,
+    });
+
+    //nofication trigger here
+
+    res.status(201).json({
+      data: reply,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+threadsRouters.delete("/replies/:replyId", async (req, res, next) => {
+  try {
+    const auth = getAuth(req);
+
+    if (!auth.userId) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+
+    const replyId = Number(req.params.replyId);
+
+    if (!Number.isInteger(replyId) || replyId <= 0) {
+      throw new BadRequestError("Invalid thread Id");
+    }
+
+    const profile = await getUserFromClerk(auth.userId);
+    const authorUserId = await findReplyAuthor(replyId);
+
+    if (authorUserId !== profile.user.id) {
+      throw new UnauthorizedError("YOu can not delete some one else replies");
+    }
+
+    await deleteReplyById(replyId);
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+threadsRouters.post("/threads/:threadId/like", async (req, res, next) => {
+  try {
+    const auth = getAuth(req);
+
+    if (!auth.userId) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+    const threadId = Number(req.params.threadId);
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      throw new BadRequestError("Invalid thread Id");
+    }
+
+    const profile = await getUserFromClerk(auth.userId);
+
+    await likeThreadOnce({
+      threadId,
+      userId: profile.user.id,
+    });
+
+    //notification will be added here
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+threadsRouters.delete("/threads/:threadId/like", async (req, res, next) => {
+  try {
+    const auth = getAuth(req);
+
+    if (!auth.userId) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+    const threadId = Number(req.params.threadId);
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      throw new BadRequestError("Invalid thread Id");
+    }
+
+    const profile = await getUserFromClerk(auth.userId);
+
+    await removeThreadOnce({
+      threadId,
+      userId: profile.user.id,
+    });
+
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
