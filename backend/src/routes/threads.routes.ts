@@ -18,6 +18,10 @@ import {
   listRepliesForThread,
   removeThreadOnce,
 } from "../modules/threads/replies.repository.js";
+import {
+  createCommentNotification,
+  createLikeNotification,
+} from "../modules/notifications/notifications.service.js";
 
 export const threadsRouters = Router();
 
@@ -151,6 +155,10 @@ threadsRouters.post("/threads/:threadId/replies", async (req, res, next) => {
     });
 
     //nofication trigger here
+    await createCommentNotification({
+      threadId,
+      actorUserId: profile.user.id,
+    });
 
     res.status(201).json({
       data: reply,
@@ -209,6 +217,11 @@ threadsRouters.post("/threads/:threadId/like", async (req, res, next) => {
     });
 
     //notification will be added here
+
+    await createLikeNotification({
+      threadId,
+      actorUserId: profile.user.id,
+    });
 
     res.status(204).send();
   } catch (error) {
