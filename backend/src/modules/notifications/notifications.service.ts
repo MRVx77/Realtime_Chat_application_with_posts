@@ -1,4 +1,5 @@
 import { query } from "../../db/db.js";
+import { getIo } from "../../realtime/io.js";
 import { mapNotificationsRow, NotificationRow } from "./notifications.types.js";
 
 export async function createCommentNotification(params: {
@@ -67,6 +68,15 @@ export async function createCommentNotification(params: {
 
   //emit socket event
   //notification:new
+
+  const io = getIo();
+
+  if (io) {
+    io.to(`notifications:user:${authorUserId}`).emit(
+      "notification:new",
+      payload,
+    );
+  }
 }
 
 export async function createLikeNotification(params: {
@@ -135,6 +145,14 @@ export async function createLikeNotification(params: {
 
   //emit socket event
   //notification:new
+  const io = getIo();
+
+  if (io) {
+    io.to(`notifications:user:${authorUserId}`).emit(
+      "notification:new",
+      payload,
+    );
+  }
 }
 
 export async function listNotificationForUser(params: {
