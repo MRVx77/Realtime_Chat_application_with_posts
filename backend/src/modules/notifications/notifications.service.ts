@@ -12,9 +12,8 @@ export async function createCommentNotification(params: {
     `
     select author_user_id
     from threads
-    where id = $1;
+    where id = $1
     limit 1
-
     `,
     [threadId],
   );
@@ -89,9 +88,8 @@ export async function createLikeNotification(params: {
     `
     select author_user_id
     from threads
-    where id = $1;
+    where id = $1
     limit 1
-
     `,
     [threadId],
   );

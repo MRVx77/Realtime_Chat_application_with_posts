@@ -20,7 +20,7 @@ async function boostrap() {
       logger.info(`Server listening on port ${port}`);
     });
   } catch (error) {
-    logger.error(`Failed to start the server: ${(error as Error).message}`);
+    console.error("Failed to start the server:", error);
   }
 }
 

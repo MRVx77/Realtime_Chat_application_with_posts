@@ -42,7 +42,7 @@ function getOnlineUsersIds(): number[] {
 
 function broadCastPresence() {
   io?.emit("presence:update", {
-    onlineUsers: getOnlineUsersIds,
+    onlineUsers: getOnlineUsersIds(),
   });
 }
 

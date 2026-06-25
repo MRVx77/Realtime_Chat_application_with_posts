@@ -1,15 +1,75 @@
 "use client";
 
-import { Show, UserButton } from "@clerk/nextjs";
+import { Show, useAuth, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { BellIcon, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSocket } from "@/hooks/use-socket";
+import { apiGet, createBrowserApiClient } from "@/lib/api-client";
+import { Notification } from "@/types/notification";
+import { useNotificationCount } from "@/hooks/use-notification-count";
+import { toast } from "sonner";
 
 export function Navbar() {
-  const [unreadCount, setUnreadcount] = useState(0);
-
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { unreadCount, setUnreadCount, incrementUnread } =
+    useNotificationCount();
+
+  const { getToken, userId } = useAuth();
+  const { socket } = useSocket();
+
+  const apiClient = useMemo(() => createBrowserApiClient(getToken), [getToken]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function load() {
+      if (!userId) {
+        if (isMounted) setUnreadCount(0);
+        return;
+      }
+
+      try {
+        const data = await apiGet<Notification[]>(
+          apiClient,
+          "/api/notifications?unreadOnly=true",
+        );
+
+        if (!isMounted) return;
+        console.log(data);
+
+        setUnreadCount(data.length);
+      } catch (error) {
+        if (!isMounted) return;
+        console.log(error);
+      }
+    }
+    load();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (payload: Notification) => {
+      incrementUnread();
+
+      toast("New Notification", {
+        description:
+          payload.type === "reply_on_thread"
+            ? `${payload.actor.handle ?? "Someone"} commented to your thread`
+            : `${payload.actor.handle ?? "Someone"} Liked to your thread`,
+      });
+    };
+
+    socket.on("notification:new", handleNewNotification);
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+    };
+  }, [socket, incrementUnread]);
+
+  //9.04
 
   const navItems = [
     {

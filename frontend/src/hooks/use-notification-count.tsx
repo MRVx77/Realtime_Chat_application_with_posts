@@ -61,4 +61,6 @@ export function useNotificationCount() {
   if (!ctx) {
     throw new Error("Context error occured");
   }
+
+  return ctx;
 }
