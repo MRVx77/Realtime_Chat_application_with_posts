@@ -43,6 +43,8 @@ notifiactionRouter.post("/read-all", async (req, res, next) => {
     await markNotificationReadAll({
       userId: profile.user.id,
     });
+
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
@@ -66,6 +68,8 @@ notifiactionRouter.post("/:id/read", async (req, res, next) => {
       userId: profile.user.id,
       notificationId,
     });
+
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

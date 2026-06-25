@@ -69,8 +69,6 @@ export function Navbar() {
     };
   }, [socket, incrementUnread]);
 
-  //9.04
-
   const navItems = [
     {
       href: "/chat",
@@ -114,7 +112,7 @@ export function Navbar() {
         </div>
         <div className="flex items-center gap-2 md:gap-4 ">
           <Show when={"signed-in"}>
-            <Link href={"/notification"}>
+            <Link href={"/notifications"}>
               <Button
                 size="icon"
                 variant="ghost"
