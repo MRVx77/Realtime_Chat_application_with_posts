@@ -1,5 +1,6 @@
 "use client";
 
+import DirectChatPanel from "@/components/chat/direct-chat-panel";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSocket } from "@/hooks/use-socket";

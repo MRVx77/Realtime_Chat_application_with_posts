@@ -1,7 +1,6 @@
 import { Server } from "socket.io";
 import { Server as HttpServer } from "http";
 import { getUserFromClerk } from "../modules/users/user.service.js";
-import { string } from "zod";
 import { createDirectMessage } from "../modules/chat/chat.services.js";
 
 let io: Server | null = null;
@@ -157,6 +156,12 @@ export function initIo(httpServer: HttpServer) {
           recipientRoom,
           isTyping: !!data?.isTyping,
         });
+      });
+
+      socket.on("disconnect", () => {
+        console.log(`[io disconnect] -----> ${socket.id}`);
+        removeOnlineUser(localUserId, socket.id);
+        broadCastPresence();
       });
 
       addOnlineUser(localUserId, socket.id);
