@@ -38,7 +38,7 @@ export function Navbar() {
         );
 
         if (!isMounted) return;
-        console.log(data);
+        // console.log(data);
 
         setUnreadCount(data.length);
       } catch (error) {
