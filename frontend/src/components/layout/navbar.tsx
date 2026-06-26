@@ -1,27 +1,58 @@
 "use client";
 
-import { Show, useAuth, UserButton } from "@clerk/nextjs";
+import { Show, useAuth, useClerk, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { BellIcon, Menu, X } from "lucide-react";
+import { BellIcon, LogOut, Menu, User, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSocket } from "@/hooks/use-socket";
 import { apiGet, createBrowserApiClient } from "@/lib/api-client";
 import { Notification } from "@/types/notification";
 import { useNotificationCount } from "@/hooks/use-notification-count";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+
+type UserResponse = {
+  id: number;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserResponse | null>(null);
+  const [dropDown, setDropDown] = useState(false);
 
   const { unreadCount, setUnreadCount, incrementUnread } =
     useNotificationCount();
 
   const { getToken, userId } = useAuth();
   const { socket } = useSocket();
+  const { signOut } = useClerk();
+  const { user } = useClerk();
 
   const apiClient = useMemo(() => createBrowserApiClient(getToken), [getToken]);
 
+  //avatarUrl
+  useEffect(() => {
+    if (!userId) {
+      setUserProfile(null);
+      return;
+    }
+
+    async function loadProfile() {
+      try {
+        const data = await apiGet<UserResponse>(apiClient, "/api/me");
+        setUserProfile(data);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    loadProfile();
+  }, [userId, apiClient]);
+
+  //fetch
   useEffect(() => {
     let isMounted = true;
 
@@ -49,6 +80,7 @@ export function Navbar() {
     load();
   }, [userId]);
 
+  //notification
   useEffect(() => {
     if (!socket) return;
 
@@ -68,6 +100,20 @@ export function Navbar() {
       socket.off("notification:new", handleNewNotification);
     };
   }, [socket, incrementUnread]);
+
+  //dropdown
+  useEffect(() => {
+    if (!dropDown) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".user-menu-container")) {
+        setDropDown(false);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, [dropDown]);
 
   const navItems = [
     {
@@ -124,7 +170,62 @@ export function Navbar() {
                 </span>
               </Button>
             </Link>
-            <UserButton afterSwitchSessionUrl="/" />
+
+            {/* dropdown menu */}
+            <div className="relative user-menu-container">
+              <button
+                onClick={() => setDropDown((open) => !open)}
+                className="flex items-center gap-2 rounded-full cursor-pointer focus:outline-none"
+              >
+                <Avatar className="h-12 w-12 border border-sidebar-border hover:opacity-80 transition-opacity">
+                  <AvatarImage
+                    src={userProfile?.avatarUrl || user?.imageUrl || ""}
+                    alt={userProfile?.displayName || user?.fullName || "User"}
+                  />
+                  <AvatarFallback>
+                    {(userProfile?.displayName || user?.firstName || "U")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+
+              {dropDown && (
+                <div className="absolute right-0 mt-2 w-60 rounded-md border border-sidebar-border bg-sidebar p-1 shadow-lg ring-1 ring-black/5 z-50">
+                  <div className="px-3 py-2 border-b border-sidebar-border">
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {userProfile?.displayName || user?.fullName}
+                    </p>
+                    {user?.primaryEmailAddress?.emailAddress && (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {user.primaryEmailAddress.emailAddress}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="py-1">
+                    <Link
+                      href={"/profile"}
+                      onClick={() => setDropDown(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-card/10 hover:text-foreground rounded-sm transition-colors"
+                    >
+                      <User className="h-4 w-4" />
+                      Profile
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setDropDown(false);
+                        signOut({ redirectUrl: "/" });
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-sm transition-colors text-left cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </Show>
           <Show when={"signed-out"}>
             <Link href="/sign-in">
