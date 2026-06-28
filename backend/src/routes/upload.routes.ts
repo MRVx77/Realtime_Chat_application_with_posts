@@ -1,6 +1,7 @@
 import { Request, Router } from "express";
 import multer from "multer";
 import { cloudinary } from "../config/cloudinary.js";
+import globalRateLimit from "../middleware/rateLimiter.js";
 
 export const uploadRouter = Router();
 
@@ -13,6 +14,7 @@ const upload = multer({
 
 uploadRouter.post(
   "/image-upload",
+  globalRateLimit(20, 15 * 60 * 1000),
   upload.single("file"),
   async (req: Request, res, next) => {
     try {

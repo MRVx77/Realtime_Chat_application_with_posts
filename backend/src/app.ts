@@ -5,6 +5,7 @@ import { nothFoundHandler } from "./middleware/notFoundHandler.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { clerkMiddleware } from "./config/clerk.js";
 import { apiRouter } from "./routes/index.js";
+import globalRateLimit from "./middleware/rateLimiter.js";
 
 export function creatApp() {
   const app = express();
@@ -19,6 +20,7 @@ export function creatApp() {
   );
   app.use(express.json());
 
+  app.use("/api", globalRateLimit(100, 15 * 60 * 1000));
   app.use("/api", apiRouter);
 
   app.use(nothFoundHandler);

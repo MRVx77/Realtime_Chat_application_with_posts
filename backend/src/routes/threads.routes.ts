@@ -22,6 +22,7 @@ import {
   createCommentNotification,
   createLikeNotification,
 } from "../modules/notifications/notifications.service.js";
+import globalRateLimit from "../middleware/rateLimiter.js";
 
 export const threadsRouters = Router();
 
@@ -40,29 +41,33 @@ threadsRouters.get("/categories", async (_req, res, next) => {
   }
 });
 
-threadsRouters.post("/threads", async (req, res, next) => {
-  try {
-    const auth = getAuth(req);
-    if (!auth.userId) {
-      throw new UnauthorizedError("Unauthorized");
+threadsRouters.post(
+  "/threads",
+  globalRateLimit(20, 15 * 60 * 1000),
+  async (req, res, next) => {
+    try {
+      const auth = getAuth(req);
+      if (!auth.userId) {
+        throw new UnauthorizedError("Unauthorized");
+      }
+
+      const paredBody = CreatedThreadsSchema.parse(req.body);
+
+      const profile = await getUserFromClerk(auth.userId);
+
+      const thread = await CreatedThread({
+        categorySlug: paredBody.categorySlug,
+        authUserId: profile.user.id,
+        title: paredBody.title,
+        body: paredBody.body,
+      });
+
+      res.status(200).json({ data: thread });
+    } catch (error) {
+      next(error);
     }
-
-    const paredBody = CreatedThreadsSchema.parse(req.body);
-
-    const profile = await getUserFromClerk(auth.userId);
-
-    const thread = await CreatedThread({
-      categorySlug: paredBody.categorySlug,
-      authUserId: profile.user.id,
-      title: paredBody.title,
-      body: paredBody.body,
-    });
-
-    res.status(200).json({ data: thread });
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 threadsRouters.get("/threads/:threadId", async (req, res, next) => {
   try {
@@ -128,45 +133,49 @@ threadsRouters.get("/threads/:threadId/replies", async (req, res, next) => {
   }
 });
 
-threadsRouters.post("/threads/:threadId/replies", async (req, res, next) => {
-  try {
-    const auth = getAuth(req);
+threadsRouters.post(
+  "/threads/:threadId/replies",
+  globalRateLimit(20, 15 * 60 * 1000),
+  async (req, res, next) => {
+    try {
+      const auth = getAuth(req);
 
-    if (!auth.userId) {
-      throw new UnauthorizedError("Unauthorized");
+      if (!auth.userId) {
+        throw new UnauthorizedError("Unauthorized");
+      }
+
+      const threadId = Number(req.params.threadId);
+      if (!Number.isInteger(threadId) || threadId <= 0) {
+        throw new BadRequestError("Invalid thread Id");
+      }
+
+      const bodyRaw = typeof req.body?.body === "string" ? req.body.body : "";
+      if (bodyRaw.trim().length <= 2) {
+        throw new BadRequestError("Reply is too short!");
+      }
+
+      const profile = await getUserFromClerk(auth.userId);
+
+      const reply = await creatReply({
+        threadId,
+        authorUserId: profile.user.id,
+        body: bodyRaw,
+      });
+
+      //nofication trigger here
+      await createCommentNotification({
+        threadId,
+        actorUserId: profile.user.id,
+      });
+
+      res.status(201).json({
+        data: reply,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const threadId = Number(req.params.threadId);
-    if (!Number.isInteger(threadId) || threadId <= 0) {
-      throw new BadRequestError("Invalid thread Id");
-    }
-
-    const bodyRaw = typeof req.body?.body === "string" ? req.body.body : "";
-    if (bodyRaw.trim().length <= 2) {
-      throw new BadRequestError("Reply is too short!");
-    }
-
-    const profile = await getUserFromClerk(auth.userId);
-
-    const reply = await creatReply({
-      threadId,
-      authorUserId: profile.user.id,
-      body: bodyRaw,
-    });
-
-    //nofication trigger here
-    await createCommentNotification({
-      threadId,
-      actorUserId: profile.user.id,
-    });
-
-    res.status(201).json({
-      data: reply,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 threadsRouters.delete("/replies/:replyId", async (req, res, next) => {
   try {
@@ -197,37 +206,41 @@ threadsRouters.delete("/replies/:replyId", async (req, res, next) => {
   }
 });
 
-threadsRouters.post("/threads/:threadId/like", async (req, res, next) => {
-  try {
-    const auth = getAuth(req);
+threadsRouters.post(
+  "/threads/:threadId/like",
+  globalRateLimit(20, 15 * 60 * 1000),
+  async (req, res, next) => {
+    try {
+      const auth = getAuth(req);
 
-    if (!auth.userId) {
-      throw new UnauthorizedError("Unauthorized");
+      if (!auth.userId) {
+        throw new UnauthorizedError("Unauthorized");
+      }
+      const threadId = Number(req.params.threadId);
+      if (!Number.isInteger(threadId) || threadId <= 0) {
+        throw new BadRequestError("Invalid thread Id");
+      }
+
+      const profile = await getUserFromClerk(auth.userId);
+
+      await likeThreadOnce({
+        threadId,
+        userId: profile.user.id,
+      });
+
+      //notification will be added here
+
+      await createLikeNotification({
+        threadId,
+        actorUserId: profile.user.id,
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      next(error);
     }
-    const threadId = Number(req.params.threadId);
-    if (!Number.isInteger(threadId) || threadId <= 0) {
-      throw new BadRequestError("Invalid thread Id");
-    }
-
-    const profile = await getUserFromClerk(auth.userId);
-
-    await likeThreadOnce({
-      threadId,
-      userId: profile.user.id,
-    });
-
-    //notification will be added here
-
-    await createLikeNotification({
-      threadId,
-      actorUserId: profile.user.id,
-    });
-
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 threadsRouters.delete("/threads/:threadId/like", async (req, res, next) => {
   try {

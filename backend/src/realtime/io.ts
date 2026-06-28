@@ -7,6 +7,37 @@ let io: Server | null = null;
 
 const onlineUsers = new Map<number, Set<string>>();
 
+const dmRateTracker = new Map<number, { count: number; resetAt: number }>();
+
+const DM_MAX_MESSAGES = 30; // max messages allowed
+const DM_WINDOW_MS = 60 * 1000; // per 60 seconds
+
+function isDmRateLimited(userId: number): boolean {
+  const now = Date.now();
+  const tracker = dmRateTracker.get(userId);
+
+  // First message ever from this user
+  if (!tracker) {
+    dmRateTracker.set(userId, { count: 1, resetAt: now + DM_WINDOW_MS });
+    return false;
+  }
+
+  // Window has expired — reset their count
+  if (now > tracker.resetAt) {
+    dmRateTracker.set(userId, { count: 1, resetAt: now + DM_WINDOW_MS });
+    return false;
+  }
+
+  // Still inside the window — increment count
+  tracker.count += 1;
+
+  // Over the limit?
+  if (tracker.count > DM_MAX_MESSAGES) {
+    return true; // ← BLOCKED
+  }
+  return false; // ← ALLOWED
+}
+
 function addOnlineUser(rawUserId: unknown, socketId: string) {
   const userId = Number(rawUserId);
 
@@ -113,6 +144,13 @@ export function initIo(httpServer: HttpServer) {
           if (senderUserId === recipientUserId) return;
 
           console.log(`dm:send`, senderUserId, recipientUserId);
+
+          if (isDmRateLimited(senderUserId)) {
+            socket.emit("dm:error", {
+              error: "Slow down! You are sending too many messages.",
+            });
+            return;
+          }
 
           const message = await createDirectMessage({
             senderUserId,

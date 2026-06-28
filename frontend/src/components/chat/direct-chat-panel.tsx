@@ -119,12 +119,18 @@ function DirectChatPanel(props: DirectChatPanelProps) {
       }
     }
 
+    function handleDmError(payload: { error: string }) {
+      toast.error(payload.error);
+    }
+
     socket.on("dm:message", handleMessage);
     socket.on("dm:typing", handleTyping);
+    socket.on("dm:error", handleDmError);
 
     return () => {
       socket.off("dm:message", handleMessage);
       socket.off("dm:typing", handleTyping);
+      socket.off("dm:error", handleDmError);
     };
   }, [socket, otherUserId]);
 
