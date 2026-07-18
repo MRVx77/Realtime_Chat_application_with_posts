@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNotificationCount } from "@/hooks/use-notification-count";
 import { apiGet, createBrowserApiClient } from "@/lib/api-client";
@@ -83,13 +84,38 @@ function NotificationPage() {
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
+  async function readAllNotification() {
+    if (unreadCount === 0) return;
+    try {
+      setIsLoading(true);
+
+      await apiClient.post(`/api/notifications/read-all`);
+
+      setNotifications((prev) =>
+        prev.map((n) => ({
+          ...n,
+          readAt: new Date().toISOString(),
+        })),
+      );
+
+      decrementUnread(unreadCount);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full flex-col gap-6 py-8 px-4">
-      <div>
+      <div className="flex justify-between">
         <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-foreground">
           <Inbox className="h-7 w-7 text-primary" />
           Notifications
         </h1>
+        <Button onClick={() => readAllNotification()} disabled={isLoading}>
+          Read all
+        </Button>
       </div>
 
       <Card className="border-border/70 bg-card">

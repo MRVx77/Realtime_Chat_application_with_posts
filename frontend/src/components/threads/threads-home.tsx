@@ -25,6 +25,7 @@ function ThreadsHomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [debounceSearch, setDebounceSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(
     searchParams.get("category") ?? "all",
   );
@@ -67,6 +68,19 @@ function ThreadsHomePage() {
       isMounted = false;
     };
   }, [apiClient]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebounceSearch(search);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    if (debounceSearch.length > 0 && debounceSearch.length < 2) return;
+    applyFilters(activeCategory, debounceSearch);
+  }, [debounceSearch]);
 
   async function applyFilters(category: string, searchVal: string) {
     const params = new URLSearchParams();
