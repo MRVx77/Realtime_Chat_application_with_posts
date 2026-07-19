@@ -8,6 +8,7 @@
   "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
     "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
