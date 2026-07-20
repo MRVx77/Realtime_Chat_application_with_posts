@@ -10,6 +10,7 @@ const EnvSchema = z.object({
   DB_PASSWORD: z.string().default("mrv7777"),
   CLERK_PUBLISHABLE_KEY: z.string(),
   CLERK_SECRET_KEY: z.string(),
+  DB_SSL: z.string().optional().default("false"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
