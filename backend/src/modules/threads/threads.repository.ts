@@ -182,3 +182,33 @@ export async function listThreads(
 
   return result.rows.map(mapThreadSummaryRow);
 }
+
+export async function deleteThreadById(id: number) {
+  await query(
+    `
+      delete from threads
+      where id = $1
+      `,
+    [id],
+  );
+}
+
+export async function findAuthorId(id: number) {
+  const result = await query(
+    `
+            select author_user_id
+            from threads
+            where id = $1
+            limit 1
+            `,
+    [id],
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    throw new NotFoundError("Thread not found!!!");
+  }
+
+  return row.author_user_id as number;
+}

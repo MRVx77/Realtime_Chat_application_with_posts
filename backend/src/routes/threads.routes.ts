@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   CreatedThread,
+  deleteThreadById,
+  findAuthorId,
   listCategories,
   listThreads,
   parseThreadListFilter,
@@ -109,6 +111,34 @@ threadsRouters.get("/threads", async (req, res, next) => {
     const extractListofThreads = await listThreads(filter);
 
     res.json({ data: extractListofThreads });
+  } catch (error) {
+    next(error);
+  }
+});
+
+threadsRouters.delete("/threads/:threadId", async (req, res, next) => {
+  try {
+    const auth = getAuth(req);
+
+    if (!auth.userId) {
+      throw new UnauthorizedError("Unauthorized");
+    }
+
+    const threadId = Number(req.params.threadId);
+
+    if (!Number.isInteger(threadId) || threadId <= 0) {
+      throw new BadRequestError("Invalid thread Id");
+    }
+
+    const profile = await getUserFromClerk(auth.userId);
+    const authorId = await findAuthorId(threadId);
+
+    if (authorId !== profile.user.id) {
+      throw new UnauthorizedError("YOu can not delete some one else Threads");
+    }
+
+    await deleteThreadById(threadId);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

@@ -18,6 +18,8 @@ export default function ThreadsDetailsPage() {
   const router = useRouter();
   const { getToken, userId } = useAuth();
 
+  const [isDeletingThread, setIsDeletingThread] = useState(false);
+
   const [thread, setThread] = useState<ThreadDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [myHandle, setMyHandle] = useState<string | null>(null);
@@ -34,6 +36,8 @@ export default function ThreadsDetailsPage() {
   const [isTogglineLike, setisTogglineLike] = useState(false);
 
   const apiClient = useMemo(() => createBrowserApiClient(getToken), [getToken]);
+  const isThreadAuthor =
+    !!myHandle && !!thread?.author?.handle && myHandle === thread.author.handle;
 
   useEffect(() => {
     let isMounted = true;
@@ -72,6 +76,7 @@ export default function ThreadsDetailsPage() {
         setLoading(false);
       }
     }
+
     if (Number.isFinite(id)) {
       load();
     }
@@ -189,12 +194,42 @@ export default function ThreadsDetailsPage() {
     }
   }
 
+  async function handleDeleteThread() {
+    const confirm = window.confirm("Sure You want to delete this Post?...");
+
+    if (!confirm) return;
+
+    if (!userId) {
+      toast.error("You must be logged in.", {
+        description: "Please login to continue...",
+      });
+      return;
+    }
+
+    try {
+      setIsDeletingThread(true);
+
+      await apiClient.delete(`/api/threads/threads/${id}`);
+      toast.success("Thread deleted!", {
+        description: "Your thread has been deleted.",
+      });
+      router.push("/");
+    } catch (error) {
+      console.log(error);
+      toast.error("Failed to delete thread", {
+        description: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsDeletingThread(false);
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap6 px-4 py-8">
       <Button
         variant={"ghost"}
         onClick={() => router.push("/")}
-        className="w-fit rounded-full border border-border/70 bg-card/70 px-3 text-xs font-medium text-muted-foreground"
+        className="w-fit rounded-full border border-border/70 bg-card/70 px-3 text-sm font-medium text-muted-foreground"
       >
         <ArrowLeft className="mr-2 w-4 h-4" />
         Back to threads
@@ -249,6 +284,18 @@ export default function ThreadsDetailsPage() {
                     : likeCount > 0
                       ? `${likeCount}`
                       : "Like"}
+                </Button>
+              )}
+              {isThreadAuthor && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteThread}
+                  disabled={isDeletingThread}
+                  className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all duration-200"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {isDeletingThread ? "Deleting..." : "Delete"}
                 </Button>
               )}
             </div>
